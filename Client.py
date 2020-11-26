@@ -39,9 +39,10 @@ class Client(object):
             # If JobList is sent from Server Print the Job List
             if type(in_data) == list:
                 for job in in_data:
+                    print(str(count)+":")
+                    count += 1
                     for element in job:
-                        print(count + ": " + element, end=" ")
-                        count += 1
+                        print(element, end=" ")
                     print()
             else:
                 print(in_data)

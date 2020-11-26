@@ -4,6 +4,27 @@ class JobList(object):
 
     #Needed Variable
     listofjobs = []
+    jobsToRequest = ['IP Online Detection', 'Subnet IP Online Detection', 'Specific Port Status Detection',
+                     'All Port Status Detection', 'ICMP Flood Attack', 'TCP Flood Attack', 'UDP Flood Attack']
+
+    '''
+    One-To-One
+    -IP Online Detection
+    -Subnet IP Online Detection
+    -Specific Port Status Detection
+    -All Port Status Detection
+    
+    One-To-Many
+    -ICMP Flood Attack
+    -TCP Flood Attack
+    -UDP Flood Attack 
+    
+    Final Project 
+    -Get Location of Nearest Job Seeker to Target Node
+    -Report IP and MAC Address of hosts on Job Seekers LAN
+    -Turn Into .exe
+    -(BONUS 5%) Resume From Crash Point
+    '''
 
     def updateJobList(self, creatorName, jobName, numofSeekers):
         """
@@ -78,6 +99,68 @@ class JobList(object):
 
     def updateJobSeekerList(self, jobSelection, SeekerName):
         self.listofjobs[jobSelection].addSeekerList(SeekerName)
+
+    '''
+    One-To-One Jobs
+    '''
+    def createIPOnlineDetectionJob(self, creatorName):
+
+        #Creating IP Online Detection Job
+        job = Job(creatorName, "IP Online Detection", '1')
+
+        #Adding IP Online Detection Job to Job List
+        self.listofjobs.append(job)
+
+    def createSubnetIPOnlineDetection(self, creatorName):
+
+        #Creating Subnet IP Online Detection Job
+        job = Job(creatorName, "Subnet IP Online Detection", '1')
+
+        #Adding Subnet IP Online Detection Job to Job List
+        self.listofjobs.append(job)
+
+    def specificPortStatusDetection(self, creatorName):
+
+        #Creating Specific Port Status Detection Job
+        job = Job(creatorName, "Specific Port Status Detection", '1')
+
+        #Adding Specific Port Status Detection Job to Job List
+        self.listofjobs.append(job)
+
+    def allPortStatusDetection(self, creatorName):
+
+        # Creating All Port Status Detection Job
+        job = Job(creatorName, "All Port Status Detection", '1')
+
+        # Adding All Port Status Detection Job to Job List
+        self.listofjobs.append(job)
+
+    '''
+    One-To-Many Jobs
+    '''
+    def createICMPFloodAttackJob(self, creatorName, numOfSeekers):
+
+        #Creating ICMP Flood Attack Job
+        job = Job(creatorName, "ICMP Flood Attack", numOfSeekers)
+
+        #Adding ICMP Flood Attack Job to Job List
+        self.listofjobs.append(job)
+
+    def createTCPFloodAttackJob(self, creatorName, numOfSeekers):
+
+        #Creating TCP Flood Attack Job
+        job = Job(creatorName, "TCP Flood Attack", numOfSeekers)
+
+        #Adding TCP Flood Attack Job to Job List
+        self.listofjobs.append(job)
+
+    def createUDPFloodAttackJob(self, creatorName, numOfSeekers):
+
+        #Creating UDP Flood Attack Job
+        job = Job(creatorName, "UDP Flood Attack", numOfSeekers)
+
+        #Adding UDP Flood Attack Job to Job List
+        self.listofjobs.append(job)
 
     '''
     Obtain Functions
