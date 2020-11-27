@@ -7,7 +7,7 @@ class Job(object):
         self.JobName = jobName
         self.NumOfSeekers = numOfSeekers
         self.FullJob = jobCreator+" "+" "+jobName+" "+" "+numOfSeekers
-        self.JobSeekerList = [numOfSeekers]
+        self.JobSeekerList = []
 
     def __iter__(self):
         yield self.JobCreator
@@ -16,8 +16,6 @@ class Job(object):
 
     def addSeekerList(self, SeekerName):
         self.JobSeekerList.append(SeekerName)
-        for seekers in self.JobSeekerList:
-            print(seekers)
 
     '''
     Getter Functions

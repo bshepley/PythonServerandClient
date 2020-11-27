@@ -4,8 +4,26 @@ import pickle
 from _thread import *
 from JobList import *
 
-
 class Server(object):
+    """
+    Tasks to Develop or Fix
+    -Viewing Joined Jobs (Job Seeker)
+    -Write Target IP and/or Target Port to .txt (Job Creator)
+    -Connect Group Members .py scripts
+
+    Bugs to Work Out:
+    -After Certain Actions The Client Needs to Send Blank Space to Continue
+    -Setting Job to Finished as Soon as The Job Gets Started
+
+    Server & Client Functions:
+    -Determine if the Client is a Job Creator or Job Seeker
+    -Job Creators can Post Jobs
+    -Job Seekers can Join Jobs
+    -Job Creators and Job Seekers can View the Job List
+    -Job Creators can View Job Seeker List
+    -Job Creators can Start The Job
+    -Job Seekers can Complete The Job
+    """
 
     def __init__(self):
 
@@ -14,6 +32,8 @@ class Server(object):
         self.port = 1233
         self.ThreadCount = 0
         self.jobList = JobList()
+        self.jobCompletion = "Not Complete"
+        self.activeJobsWithSeekers = []
 
         # Bind socket to port
         try:
@@ -120,19 +140,14 @@ class Server(object):
             jobSelection = int(data.decode()) - 1
 
             if int(jobSelection) <= len(self.jobList.listofjobs):
-                #Sending Message to Client to Send Job Seeker Name
-                connection.send(pickle.dumps("Please Enter Your Name (Will Be Added To Job Seeker List): "))
-
-                #Receiving Message From Client
-                data = connection.recv(2048)
-                SeekerName = data.decode()
 
                 #Adding Job Seeker to the Job Seeker List
-                self.jobList.updateJobSeekerList(jobSelection, SeekerName)
+                self.joinSeekerList(connection, jobSelection)
 
                 #Decreases The Shown Amount of Seekers Needed for Accepted Job
                 self.jobList.updateNumOfSeekers(jobSelection, False)
 
+                #Keeps the Client Waiting Until JobCreator Starts Job
                 self.waitForStart(connection)
 
             else:
@@ -141,16 +156,17 @@ class Server(object):
     # FoundJobSeeker-->viewingMenuJS-->acceptJob-->waitForStart
     def waitForStart(self, connection):
 
-        connection.send(pickle.dumps("StartWaiting\nPress Enter to go to waiting Screen"))
+        connection.send(pickle.dumps("Press Enter to go to waiting Screen"))
 
         while True:
-            print("Client is waiting")
             for jobs in self.jobList.listofjobs:
                 if jobs.getNumOfSeekers() == "Job Started":
                     connection.send(pickle.dumps("Press Enter to run "+jobs.getJobName()+ " Program"))
 
                     #Sending Key Word
                     connection.send(pickle.dumps(jobs.getJobName()))
+
+                    self.jobCompletion = "Complete"
                 else:
                     continue
 
@@ -200,7 +216,7 @@ class Server(object):
 
         self.jobListView(connection)
 
-        connection.send(pickle.dumps("1.Start Job\n2.Exit"))
+        connection.send(pickle.dumps("1.Start Job\n2.View Seekers\n2.Exit"))
 
         while True:
             #Receiving Message From Client
@@ -209,8 +225,9 @@ class Server(object):
 
             if optionSelection == 1:
                 self.startJob(connection)
-
             elif optionSelection == 2:
+                self.seekerListView(connection)
+            elif optionSelection == 3:
                 self.FoundJobCreator(connection)
             else:
                 connection.send(pickle.dumps("Not Valid Input...\n1.Start Job\n2.Exit"))
@@ -240,15 +257,24 @@ class Server(object):
 
         self.jobList.updateNumOfSeekers(jobSelection, True)
 
-        if self.jobList.obtainNumOfSeekers(jobSelection) == "Job Started":
-            connection.send(pickle.dumps("Job Has Been Started"))
+        if self.jobList.listofjobs[jobSelection].getNumOfSeekers() == "Job Started":
+            connection.send(pickle.dumps("Job Has Been Started\nPress Enter to Wait for Job Completion"))
+
+            self.waitForCompletion(connection, jobSelection)
 
         else:
             connection.send(pickle.dumps("Job Must Have 0 Seekers to Start"))
 
-    def waitForCompletion(self, connection):
-        print()
+    #FoundJobCreator-->viewingMenuJC-->startJob-->waitForCompletion
+    def waitForCompletion(self, connection, jobSelection):
 
+        while self.jobList.listofjobs[jobSelection].getNumOfSeekers() == "Job Started":
+
+            if self.jobCompletion == "Complete":
+                connection.send(pickle.dumps("Job Finished\nPress Enter To Go Back To Main Menu"))
+                self.FoundJobCreator(connection)
+            else:
+                continue
 
     '''             
     HELPER FUNCTIONS 
@@ -263,19 +289,19 @@ class Server(object):
         if jobNumber == 1:
             self.jobList.createIPOnlineDetectionJob(creatorName)
 
-            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
         elif jobNumber == 2:
             self.jobList.createSubnetIPOnlineDetection(creatorName)
 
-            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
         elif jobNumber == 3:
             self.jobList.specificPortStatusDetection(creatorName)
 
-            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
         elif jobNumber == 4:
             self.jobList.allPortStatusDetection(creatorName)
 
-            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
         elif jobNumber == 5:
             connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
 
@@ -283,6 +309,8 @@ class Server(object):
             numOfSeekers = data.decode()
 
             self.jobList.createICMPFloodAttackJob(creatorName, numOfSeekers)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
         elif jobNumber == 6:
             connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
 
@@ -290,6 +318,8 @@ class Server(object):
             numOfSeekers = data.decode()
 
             self.jobList.createTCPFloodAttackJob(creatorName, numOfSeekers)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
         elif jobNumber == 7:
             connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
 
@@ -297,6 +327,8 @@ class Server(object):
             numOfSeekers = data.decode()
 
             self.jobList.createUDPFloodAttackJob(creatorName, numOfSeekers)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted\nPress Enter to Continue"))
 
     #Helper Method for View Lists
     def jobListView(self, connection):
@@ -306,6 +338,32 @@ class Server(object):
             connection.send(pickle.dumps("No Jobs Posted"))
         else:
             connection.send(pickle.dumps(self.jobList.listofjobs))
+
+    #Helper Method to View Seeker List
+    def seekerListView(self, connection):
+
+        connection.send(pickle.dumps("Please Enter What Job Number You Would Like To View the Active Seekers: "))
+
+        #Receiving Message From Client
+        data = connection.recv(2048)
+        jobSelection = int(data.decode()) - 1
+
+        connection.send(pickle.dumps(self.activeJobsWithSeekers[0].getJobSeekerList()))
+
+    #SeekerList Gets Appended
+    def joinSeekerList(self, connection, jobNumber):
+        #Sending Message to Client to Send Job Seeker Name
+        connection.send(pickle.dumps("Please Enter Your Name (Will Be Added To Job Seeker List): "))
+
+        #Receiving Message From Client
+        data = connection.recv(2048)
+        SeekerName = data.decode()
+
+        #Updating Client Specific Job Seeker List
+        self.jobList.listofjobs[jobNumber].getJobSeekerList().append(SeekerName)
+
+        #Updating Server Specific Job Seeker List with Client Specific Job Seeker List
+        self.activeJobsWithSeekers.append(self.jobList.listofjobs[jobNumber])
 
 if __name__ == "__main__":
     s = Server()
