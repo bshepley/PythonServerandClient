@@ -138,6 +138,7 @@ class Server(object):
             else:
                 connection.send(pickle.dumps("Not Valid Input...\nEnter What Number Job You Would Like To Join"))
 
+    # FoundJobSeeker-->viewingMenuJS-->acceptJob-->waitForStart
     def waitForStart(self, connection):
 
         connection.send(pickle.dumps("StartWaiting\nPress Enter to go to waiting Screen"))
@@ -147,8 +148,12 @@ class Server(object):
             for jobs in self.jobList.listofjobs:
                 if jobs.getNumOfSeekers() == "Job Started":
                     connection.send(pickle.dumps("Press Enter to run "+jobs.getJobName()+ " Program"))
+
+                    #Sending Key Word
+                    connection.send(pickle.dumps(jobs.getJobName()))
                 else:
                     continue
+
     '''             
     JOB CREATOR FUNCTIONS 
     '''
@@ -197,17 +202,18 @@ class Server(object):
 
         connection.send(pickle.dumps("1.Start Job\n2.Exit"))
 
-        #Receiving Message From Client
-        data = connection.recv(2048)
-        optionSelection = int(data.decode())
+        while True:
+            #Receiving Message From Client
+            data = connection.recv(2048)
+            optionSelection = int(data.decode())
 
-        if optionSelection == 1:
-            self.startJob(connection)
+            if optionSelection == 1:
+                self.startJob(connection)
 
-        elif optionSelection == 2:
-            print("Exit")
-        else:
-            connection.send(pickle.dumps("Not Valid Input"))
+            elif optionSelection == 2:
+                self.FoundJobCreator(connection)
+            else:
+                connection.send(pickle.dumps("Not Valid Input...\n1.Start Job\n2.Exit"))
 
     #FoundJobCreator-->jobCreationItems
     def jobCreationItems(self, connection):
@@ -220,8 +226,8 @@ class Server(object):
 
         self.JobSelector(connection, int(jobNumber))
 
-        # Sending Job Creator Options to Client
-        connection.send(pickle.dumps("1.View Jobs\n2.Create Job\n3.Exit\n"))
+        #Sending Job Creator Options to Client
+        self.FoundJobCreator(connection)
 
     #FoundJobCreator-->viewingMenuJC-->startJob
     def startJob(self, connection):
@@ -239,6 +245,9 @@ class Server(object):
 
         else:
             connection.send(pickle.dumps("Job Must Have 0 Seekers to Start"))
+
+    def waitForCompletion(self, connection):
+        print()
 
 
     '''             

