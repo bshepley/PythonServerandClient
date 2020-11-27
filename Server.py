@@ -34,8 +34,10 @@ class Server(object):
             print('Thread Number: ' + str(self.ThreadCount))
 
     def threadedClient(self, connection):
+
         connection.send(pickle.dumps("Welcome, Are You A Job Seeker or A Job Creator?\n"
                                      + "Enter JS for Job Seeker, JC for Job Creator or Exit to quit"))
+
         while True:
             # Limiting to 2048 Bytes
             data = connection.recv(2048)
@@ -57,7 +59,8 @@ class Server(object):
 
             # Base Condition
             if roleSelection.upper() != 'JC' and roleSelection.upper() != 'JS' and roleSelection.upper() != 'EXIT':
-                connection.send(bytes("Not a Valid Input...Try Again", 'UTF-8'))
+                connection.send(pickle.dumps("Not a Valid Input...Enter JS for Job Seeker, "
+                                             + "JC for Job Creator or Exit to quit"))
 
     '''             
     JOB SEEKER FUNCTIONS 
@@ -79,30 +82,31 @@ class Server(object):
 
             # Exit Condition
             if optionSelection == '2':
-                sys.exit(0)
+                self.threadedClient(connection)
 
             # Base Case Condition
             if optionSelection != '1' and optionSelection != '2':
-                connection.send(pickle.dumps("Not a Valid Input...Try Again"))
+                connection.send(pickle.dumps("Not a Valid Input...\n1.View Jobs\n2.Exit\n"))
 
     #FoundJobSeeker-->viewingMenuJS
     def viewingMenuJS(self, connection):
 
         self.jobListView(connection)
 
-        connection.send(pickle.dumps("1.Join Job\n2.Exit"))
+        connection.send(pickle.dumps("1.Join Job\n2.Go Back"))
 
-        #Receiving Message From Client
-        data = connection.recv(2048)
-        optionSelection = int(data.decode())
+        while True:
+            #Receiving Message From Client
+            data = connection.recv(2048)
+            optionSelection = int(data.decode())
 
-        if optionSelection == 1:
-            self.acceptJob(connection)
+            if optionSelection == 1:
+                self.acceptJob(connection)
 
-        elif optionSelection == 2:
-            print("Exit")
-        else:
-            connection.send(pickle.dumps("Not Valid Input"))
+            elif optionSelection == 2:
+                self.FoundJobSeeker(connection)
+            else:
+                connection.send(pickle.dumps("Not Valid Input...\n1.Join Job\n2.Go Back"))
 
     #FoundJobSeeker-->viewingMenuJS-->acceptJob
     def acceptJob(self, connection):
@@ -110,36 +114,41 @@ class Server(object):
         #Sending Message to Client to Send What Number Of Job They Want to Join
         connection.send(pickle.dumps("Please Enter What Number Job You Would Like To Join"))
 
-        # Receiving Message From Client
-        data = connection.recv(2048)
-        jobSelection = int(data.decode()) - 1
+        while True:
+            # Receiving Message From Client
+            data = connection.recv(2048)
+            jobSelection = int(data.decode()) - 1
 
-        #Sending Message to Client to Send Job Seeker Name
-        connection.send(pickle.dumps("Please Enter Your Name (Will Be Added To Job Seeker List): "))
+            if int(jobSelection) <= len(self.jobList.listofjobs):
+                #Sending Message to Client to Send Job Seeker Name
+                connection.send(pickle.dumps("Please Enter Your Name (Will Be Added To Job Seeker List): "))
 
-        # Receiving Message From Client
-        data = connection.recv(2048)
-        SeekerName = data.decode()
+                #Receiving Message From Client
+                data = connection.recv(2048)
+                SeekerName = data.decode()
 
-        #Adding Job Seeker to the Job Seeker List
-        self.jobList.updateJobSeekerList(jobSelection, SeekerName)
+                #Adding Job Seeker to the Job Seeker List
+                self.jobList.updateJobSeekerList(jobSelection, SeekerName)
 
-        #Decreases The Shown Amount of Seekers Needed for Accepted Job
-        self.jobList.updateNumOfSeekers(jobSelection)
+                #Decreases The Shown Amount of Seekers Needed for Accepted Job
+                self.jobList.updateNumOfSeekers(jobSelection, False)
 
-        #Sending Message to Client to Send Job Seeker Name
-        connection.send(pickle.dumps("Please Enter Your Name (Will Be Added To Job Seeker List): "))
+                self.waitForStart(connection)
 
-        # Receiving Message From Client
-        data = connection.recv(2048)
-        SeekerName = data.decode()
+            else:
+                connection.send(pickle.dumps("Not Valid Input...\nEnter What Number Job You Would Like To Join"))
 
-        #Adding Job Seeker to the Job Seeker List
-        self.jobList.updateJobSeekerList(jobSelection, SeekerName)
+    def waitForStart(self, connection):
 
-        #Decreases The Shown Amount of Seekers Needed for Accepted Job
-        self.jobList.updateNumOfSeekers(jobSelection)
+        connection.send(pickle.dumps("StartWaiting\nPress Enter to go to waiting Screen"))
 
+        while True:
+            print("Client is waiting")
+            for jobs in self.jobList.listofjobs:
+                if jobs.getNumOfSeekers() == "Job Started":
+                    connection.send(pickle.dumps("Press Enter to run "+jobs.getJobName()+ " Program"))
+                else:
+                    continue
     '''             
     JOB CREATOR FUNCTIONS 
     '''
@@ -204,19 +213,12 @@ class Server(object):
     def jobCreationItems(self, connection):
 
         # Sending Job Creator Options to Client
-        connection.send(pickle.dumps("Enter name of Job Creator:"))
-        data = connection.recv(2048)
-        creatorsName = data.decode()
+        connection.send(pickle.dumps(self.jobList.jobsToRequest))
 
-        connection.send(pickle.dumps("Enter the job name:"))
         data = connection.recv(2048)
-        jobName = data.decode()
+        jobNumber = data.decode()
 
-        connection.send(pickle.dumps("Enter number of job seekers:"))
-        data = connection.recv(2048)
-        numofSeekers = data.decode()
-
-        self.jobList.updateJobList(creatorsName, jobName, numofSeekers)
+        self.JobSelector(connection, int(jobNumber))
 
         # Sending Job Creator Options to Client
         connection.send(pickle.dumps("1.View Jobs\n2.Create Job\n3.Exit\n"))
@@ -230,7 +232,9 @@ class Server(object):
         data = connection.recv(2048)
         jobSelection = int(data.decode()) - 1
 
-        if int(self.jobList.obtainNumOfSeekers(jobSelection)) == 0:
+        self.jobList.updateNumOfSeekers(jobSelection, True)
+
+        if self.jobList.obtainNumOfSeekers(jobSelection) == "Job Started":
             connection.send(pickle.dumps("Job Has Been Started"))
 
         else:
@@ -240,6 +244,51 @@ class Server(object):
     '''             
     HELPER FUNCTIONS 
     '''
+    def JobSelector(self, connection, jobNumber):
+
+        connection.send(pickle.dumps("Enter The Job Creator's Name: "))
+
+        data = connection.recv(2048)
+        creatorName = data.decode()
+
+        if jobNumber == 1:
+            self.jobList.createIPOnlineDetectionJob(creatorName)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+        elif jobNumber == 2:
+            self.jobList.createSubnetIPOnlineDetection(creatorName)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+        elif jobNumber == 3:
+            self.jobList.specificPortStatusDetection(creatorName)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+        elif jobNumber == 4:
+            self.jobList.allPortStatusDetection(creatorName)
+
+            connection.send(pickle.dumps("Job Has Been Created and Posted"))
+        elif jobNumber == 5:
+            connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
+
+            data = connection.recv(2048)
+            numOfSeekers = data.decode()
+
+            self.jobList.createICMPFloodAttackJob(creatorName, numOfSeekers)
+        elif jobNumber == 6:
+            connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
+
+            data = connection.recv(2048)
+            numOfSeekers = data.decode()
+
+            self.jobList.createTCPFloodAttackJob(creatorName, numOfSeekers)
+        elif jobNumber == 7:
+            connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
+
+            data = connection.recv(2048)
+            numOfSeekers = data.decode()
+
+            self.jobList.createUDPFloodAttackJob(creatorName, numOfSeekers)
+
     #Helper Method for View Lists
     def jobListView(self, connection):
 

@@ -57,7 +57,7 @@ class JobList(object):
                 print(elements, end=", ")
             print()
 
-    def updateNumOfSeekers(self, jobNumber):
+    def updateNumOfSeekers(self, jobNumber, creatorStart):
         """
         Description: This Function takes in parameter jobNumber which is used to determine which job
                     will be updating the amount of Job Seekers needed, Loops through the three main
@@ -86,7 +86,10 @@ class JobList(object):
 
             #NumofSeekers Condition
             elif count == 3:
-                NumofSeekers = int(elements) - 1
+                if int(elements) == 0 and creatorStart is True:
+                    NumofSeekers = "Job Started"
+                else:
+                    NumofSeekers = int(elements) - 1
 
             #Update Counter Variable
             count+=1
