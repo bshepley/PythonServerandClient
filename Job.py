@@ -35,6 +35,9 @@ class Job(object):
     def getJobSeekerList(self):
         return self.JobSeekerList
 
+    def getJobSeekerListSize(self):
+        return len(self.JobSeekerList)
+
     '''
     Setter Functions
     '''
