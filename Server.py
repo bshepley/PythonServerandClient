@@ -398,6 +398,14 @@ class Server(object):
         #Updating Server Specific Job Seeker List with Client Specific Job Seeker List
         self.activeJobsWithSeekers.append(self.jobList.listofjobs[jobNumber])
 
+    def matchJobs(self, jobNumber):
+        count = -1
+        for job in self.jobList.listofjobs:
+            count+=1
+            if job.getFullJob() == self.activeJobsWithSeekers[count].getFullJob():
+                print()
+
+
 if __name__ == "__main__":
     s = Server()
     s.main()

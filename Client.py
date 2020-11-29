@@ -87,14 +87,14 @@ class Client(object):
         elif in_data == "UDP Flood Attack":
             self.udpAttack.sendUDPPackets(self.targetIP, self.targetPort)
 
-    # Prints List Messages From Server
+    #Prints List Messages From Server
     def obtainList(self, in_data):
         count = 1
 
         # If JobList is sent from Server Print the Job List
         if type(in_data) == list:
             for job in in_data:
-                print(str(count) + ":")
+                print(str(count) + ":", end=" ")
                 count += 1
                 for element in job:
                     if len(element) == 1:

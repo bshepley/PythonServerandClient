@@ -2,7 +2,7 @@ from Job import *
 
 class JobList(object):
 
-    """"
+    """
     Final Project
     -Code Logic: nearestSeekerLocationtoTarget()
     -Code Logic: returnJobSeekerLanHosts()
