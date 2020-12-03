@@ -1,11 +1,13 @@
 
 class Job(object):
 
-    def __init__(self, jobCreator, jobName, numOfSeekers):
+    def __init__(self, jobCreator, jobName, numOfSeekers, targetIP, targetPort):
 
         self.JobCreator = jobCreator
         self.JobName = jobName
         self.NumOfSeekers = numOfSeekers
+        self.targetIP = "1.1.1.1"
+        self.targetPort = 0
         self.FullJob = jobCreator+" "+" "+jobName+" "+" "+numOfSeekers
         self.JobSeekerList = []
 
@@ -13,6 +15,8 @@ class Job(object):
         yield self.JobCreator
         yield self.JobName
         yield self.NumOfSeekers
+        yield self.targetIP
+        yield self.targetPort
 
     def addSeekerList(self, SeekerName):
         self.JobSeekerList.append(SeekerName)
