@@ -16,9 +16,7 @@ class JobList(object):
     jobsToRequest: This is a static list which is used to hold the names of the types of jobs offered
     '''
     listofjobs = []
-    jobsToRequest = ['IP Online Detection', 'Subnet IP Online Detection', 'Specific Port Status Detection',
-                     'All Port Status Detection', 'ICMP Flood Attack', 'TCP Flood Attack', 'UDP Flood Attack']
-
+   
     '''
     One-To-One Jobs
     '''
