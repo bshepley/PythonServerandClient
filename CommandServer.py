@@ -1,4 +1,5 @@
 from JobList import *
+import pickle
 
 class Server(object):
   """
@@ -22,31 +23,40 @@ class Server(object):
            <TCP Flood Attack>
            <UDP Flood Attack>
   """
+  connectionMessage = ["CREATEJOB  <CREATORNAME> <JOBTYPE> <NUMOFSEEKERS> <TARGETIP> <TARGETPORT>",
+                      "REMOVEJOB  <CREATORNAME> <JOBTYPE> <NUMOFSEEKERS> <TARGETIP> <TARGETPORT>",
+                      "VIEWJOBS", "CHECKJOBTEAM <CREATORNAME> <JOBTYPE>", "JOINJOB <CREATORNAME> <JOBTYPE> <SEEKERNAME>",
+                      "STARTJOB <CREATORNAME> <JOBTYPE>", "VIEWACTIVEJOBS <SEEKERNAME>", "JOBTYPE SELECTION:", 
+                      "<IP Online Detection>", "<Subnet IP Online Detection>", "<Specific Port Status Detection>",
+                      "<All Port Status Detection>", "<ICMP Flood Attack>", "<TCP Flood Attack>", "<UDP Flood Attack>"]
   
   def __init__(self):
     self.jobListOBJ = JobList()
-    
     self.COMMAND = ""
     self.parameterList = []
+    
+  def connectionMessage(self):
+    self.connection.send(pickle.dumps(connectionMessage))
   
   def ParseCommand(self, Command):
     self.parameterList = Command.split(" ")
     
-  def createJob(self, CREATORNAME, JOBTYPE, NUMOFSEEKERS, TARGETIP, TARGETPORT):
-    self.jobListOBJ.createJob(CREATORNAME, JOBTYPE, NUMOFSEEKERS, TARGETIP, TARGETPORT)
+  def createJob(self, parameterList):
+    self.jobListOBJ.createJob(parameterList[1], parameterList[2], parameterList[3], parameterList[4], parameterList[5])
   
-  def removeJob(self, CREATORNAME, JOBTYPE, NUMOFSEEKERS, TARGETIP, TARGETPORT):
+  def removeJob(self, parameterList):
+    for Job in self.jobListOBJ.listofjobs:
+      if Job.fullJob == parameterList:
+        self.connection.send(pickle.dumps("Job Removed"))
+        self.jobListOBJ.listofjobs.remove(Job)
+
   
   def viewJobs(self):
   
-  def checkJobTeam(self, CREATORNAME, JOBTYPE):
+  def checkJobTeam(self, parameterList):
   
-  def joinJob(self, CREATORNAME, JOBTYPE, SEEKERNAME):
+  def joinJob(self, parameterList):
   
-  def startJob(self, CREATORNAME, JOBTYPE):
+  def startJob(self, parameterList):
   
   def viewActiveJobs(self):
-  
-  def CommandtoFunction(self):
-    if self.parameterList[0] == "CREATEJOB":
-      self.createJob()
