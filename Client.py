@@ -29,7 +29,7 @@ class Client(object):
         self.udpAttack = FloodAttack()
 
         # Needed Variables
-        self.in_data = ''
+        self.serverMessage = ''
 
         # Creating Client Socket Object
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -49,29 +49,16 @@ class Client(object):
             # Refresh Buffer For New Server Message
             self.resetServerMessage()
 
-            # For Closing Connection To Server
-            self.closeConnection(self.in_data)
-
-            # For Displaying Messages From The Server
-            self.normalCommunication(self.in_data)
-
-            # For Displaying the List to Client
-            self.obtainList(self.in_data)
-
-            # For Setting the Target Credentials
-            self.setTargetCredentials(self.in_data)
-
-            # For Running Specific Job
-            self.jobPrograms(self.in_data)
-
+            self.obtainList(self.serverMessage)
+            
             # Gathering Input From Client to send to Server
-            out_data = input()
+            clientMessage = input()
 
             # Sending Message To Server
-            self.client.sendall(bytes(out_data, 'UTF-8'))
+            self.client.send(pickle.dumps(clientMessage))
 
     # Takes in Server Message to Run Specific Job
-    def jobPrograms(self, in_data):
+    def jobPrograms(self, serverMessage):
         if in_data == "IP Online Detection":
             print("Job 1")
         elif in_data == "Subnet IP Online Detection":
@@ -88,44 +75,46 @@ class Client(object):
             self.udpAttack.sendUDPPackets(self.targetIP, self.targetPort)
 
     #Prints List Messages From Server
-    def obtainList(self, in_data):
+    def obtainList(self, serverMessage):
         count = 1
 
         # If JobList is sent from Server Print the Job List
-        if type(in_data) == list:
-            for job in in_data:
+        if type(serverMessage) == list:
+            for job in serverMessage:
                 print(str(count) + ":", end=" ")
                 count += 1
-                for element in job:
+                for element serverMessage:
                     if len(element) == 1:
                         print(element, end="")
                     else:
                         print(element, end=" ")
                 print()
+        else:
+            print(serverMessage)
 
     # Prints Single Lined Messages From Server
-    def normalCommunication(self, in_data):
-        if type(in_data) != list:
-            print(in_data)
+    def normalCommunication(self, serverMessage):
+        if type(serverMessage) != list:
+            print(serverMessage)
 
     # Sets The Global Target Credentials (Job Seeker)
-    def setTargetCredentials(self, in_data):
+    def setTargetCredentials(self, serverMessage):
 
-        if in_data == "Target Credentials":
+        if serverMessage == "Target Credentials":
             print("Obtaining Target Information")
 
             # Refresh Buffer For New Server Message
             self.resetServerMessage()
 
             # Setting Global targetIP
-            self.targetIP = str(in_data)
+            self.targetIP = str(serverMessage)
             print(self.targetIP)
 
             # Refresh Buffer For New Server Message
             self.resetServerMessage()
 
             # Setting Global targetPort
-            self.targetPort = int(in_data)
+            self.targetPort = int(serverMessage)
             print(self.targetPort)
 
             # Skip Blank Space
@@ -133,15 +122,15 @@ class Client(object):
 
     # Refresh Buffer For New Server Message
     def resetServerMessage(self):
-        # Limiting to 1024 bytes
-        self.in_data = self.client.recv(2048)
+        # Limiting to 2048 bytes
+        self.serverMessage = self.client.recv(2048)
 
         # Sets in_data to what is sent from the Server
-        self.in_data = pickle.loads(self.in_data)
+        self.serverMessage = pickle.loads(self.in_data)
 
     # Closes Connection to Server
-    def closeConnection(self, in_data):
-        if in_data == 'exit':
+    def closeConnection(self, serverMessage):
+        if serverMessage == 'exit':
             self.client.close()
 
     # Main Function
