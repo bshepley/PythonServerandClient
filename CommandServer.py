@@ -30,10 +30,47 @@ class Server(object):
                       "<All Port Status Detection>", "<ICMP Flood Attack>", "<TCP Flood Attack>", "<UDP Flood Attack>"]
   
   def __init__(self):
+    self.ServerSocket = socket.socket()
+    self.host = '127.0.0.1'
+    self.port = 1233
+    self.ThreadCount = 0
     self.jobListOBJ = JobList()
-    self.COMMAND = ""
+    self.command = ""
     self.parameterList = []
     
+            # Bind socket to port
+    try:
+      self.ServerSocket.bind((self.host, self.port))
+    except socket.error as e:
+      print(str(e))
+    
+    print('Waiting for a Connection..')
+    self.ServerSocket.listen(5)
+    
+  def main(self):
+        while True:
+            Client, address = self.ServerSocket.accept()
+            print('Connected to: ' + address[0] + ':' + str(address[1]))
+            start_new_thread(self.threadedClient, (Client,))
+            self.ThreadCount += 1
+            print('Thread Number: ' + str(self.ThreadCount))
+  
+  def threadedClient(self, connection):
+    self.connectionMessage()
+    
+    while true:
+      #Limiting to 2048 Bytes
+      clientMessage = connection.recv(2048)
+
+      #Receiving Message From Client
+      self.command = clientMessage.pickle.loads(clientMessage)
+      
+      self.ParseCommand(self.command)
+      
+      self.commandRouting(self.parameterList)
+      
+      
+  
   def connectionMessage(self):
     self.connection.send(pickle.dumps(connectionMessage))
   
