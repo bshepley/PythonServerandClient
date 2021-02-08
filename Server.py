@@ -1,54 +1,54 @@
-import socket
-import sys
 import pickle
+import socket
 from _thread import *
 from JobList import *
+from JobCreator import *
+from JobSeeker import *
+from FileRecord import *
+import sys
+try:
+    from ip2geotools.databases.noncommercial import DbIpCity
+except ImportError:
+    print("Need to install ip2geotools to continue")
+    sys.exit(0)
 
 class Server(object):
-    """
-    Assignment 3 Tasks to Develop or Fix
-    -Multiple Jobs Creates Conflict With Updating Active Seeker List
-    -Connect Group Members .py scripts
 
-    Wanted Tasks to Develop or Fix:
-    -Removing Job Seeker From a Job (Job Creator)
-    -Viewing Joined Jobs (Job Seeker)
-    -View Job History (Job Seeker)
+    #Message Variables:
+    initialConnectionMessage = ["LOGIN <USERNAME> <PASSWORD> <POSITION>", "POSITION SELECTION: ", "<JobCreator>",
+                                "<JobSeeker>"]
 
-    Bugs to Work Out:
-    -After Certain Actions The Client Needs to Send Blank Space to Continue
-    -Setting Job to Finished as Soon as The Job Gets Started
+    jobCreatorCommandMessage = ["CREATEJOB  <CREATORNAME> <JOBTYPE> <NUMOFSEEKERS> <TARGETIP> <TARGETPORT>",
+                                "REMOVEJOB <CREATORNAME> <JOBTYPE> <NUMOFSEEKERS> <TARGETIP> <TARGETPORT>",
+                                "VIEWJOBS",
+                                "STARTJOB <CREATORNAME> <JOBTYPE>",
+                                "JOBTYPE SELECTION: ",
+                                "<IPDetection>", "<PortDetection>",
+                                "<TCPFloodAttack>", "<UDPFloodAttack>",
+                                "<NodeLocation>", "<NodeLANScan>"]
 
-    Server & Client Functions:
-    -Determine if the Client is a Job Creator or Job Seeker
-    -Job Creators can Post Jobs
-    -Job Seekers can Join Jobs
-    -Job Creators and Job Seekers can View the Job List
-    -Job Creators can Send Target IP and Port
-    -Job Seekers can Obtain Target IP and Port
-    -Job Creators can View Job Seeker List
-    -Job Creators can Start The Job
-    -Job Seekers can Complete The Job
-    """
+    jobSeekerCommandMessage = ["VIEWJOBS",
+                               "JOINJOB <CREATORNAME> <JOBTYPE> <SEEKERNAME>",
+                               "COMPLETEJOB <CREATORNAME> <JOBTYPE> <TARGETIP> <TARGETPORT>"]
 
     def __init__(self):
-
         self.ServerSocket = socket.socket()
         self.host = '127.0.0.1'
         self.port = 1233
         self.ThreadCount = 0
-        self.jobList = JobList()
-        self.jobCompletion = "Not Complete"
-        self.activeJobsWithSeekers = []
+        self.jobListOBJ = JobList()
+        self.fileRecordOBJ = FileRecord()
+        self.jobCreatorList = []
+        self.jobSeekerList = []
+        self.command = ""
+        self.parameterList = []
+        self.readBackup()
+        self.count = 0
 
-        #From Job Creator-->Server-->Job Seeker
-        self.targetIP = '1.1.1.1'
-        self.targetPort = 25565
 
         # Bind socket to port
         try:
             self.ServerSocket.bind((self.host, self.port))
-
         except socket.error as e:
             print(str(e))
 
@@ -63,347 +63,169 @@ class Server(object):
             self.ThreadCount += 1
             print('Thread Number: ' + str(self.ThreadCount))
 
+    #COMPLETE
     def threadedClient(self, connection):
-
-        connection.send(pickle.dumps("Welcome, Are You A Job Seeker or A Job Creator?\n"
-                                     + "Enter JS for Job Seeker, JC for Job Creator or Exit to quit"))
+        self.connectionMessage(connection)
 
         while True:
             # Limiting to 2048 Bytes
-            data = connection.recv(2048)
+            clientMessage = connection.recv(2048)
 
             # Receiving Message From Client
-            roleSelection = data.decode()
+            self.command = pickle.loads(clientMessage)
 
-            # Job Creator Condition
-            if roleSelection.upper() == 'JC':
-                self.FoundJobCreator(connection)
+            self.ParseCommand(self.command)
 
-            # Job Seeker Condition
-            if roleSelection.upper() == 'JS':
-                self.FoundJobSeeker(connection)
+            self.commandRouting(connection, self.parameterList)
 
-            # Exit Program Condition
-            if roleSelection.upper() == 'EXIT':
-                sys.exit(0)
+    #COMPLETE
+    def connectionMessage(self, connection):
+        connection.send(pickle.dumps(self.initialConnectionMessage))
 
-            # Base Condition
-            if roleSelection.upper() != 'JC' and roleSelection.upper() != 'JS' and roleSelection.upper() != 'EXIT':
-                connection.send(pickle.dumps("Not a Valid Input...Enter JS for Job Seeker, "
-                                             + "JC for Job Creator or Exit to quit"))
+    #COMPLETE
+    def ParseCommand(self, Command):
+        self.parameterList = Command.split(" ")
 
-    '''             
-    JOB SEEKER FUNCTIONS 
-    '''
-    #Client Identifies as a Job Seeker
-    def FoundJobSeeker(self, connection):
+    #COMPLETE
+    def login(self, connection, parameterList):
+        if parameterList[3] == "JobCreator":
+            self.jobCreatorList.append(JobCreator(parameterList[1], parameterList[2]))
+            connection.send(pickle.dumps(self.jobCreatorCommandMessage))
 
-        # Sending Job Seeker Options
-        connection.send(pickle.dumps("Job Seeker Menu:\n1.View Jobs\n2.Exit\n"))
-
-        while True:
-            # Receiving Message From Client
-            data = connection.recv(2048)
-            optionSelection = data.decode()
-
-            # View Jobs Condition
-            if optionSelection == '1':
-                self.viewingMenuJS(connection)
-
-            # Exit Condition
-            if optionSelection == '2':
-                self.threadedClient(connection)
-
-            # Base Case Condition
-            if optionSelection != '1' and optionSelection != '2':
-                connection.send(pickle.dumps("Job Seeker Menu:\n1.View Jobs\n2.Exit\n"))
-
-    #FoundJobSeeker-->viewingMenuJS
-    def viewingMenuJS(self, connection):
-
-        self.jobListView(connection)
-
-        connection.send(pickle.dumps("Job Viewing Menu:\n1.Join Job\n2.Return to Job Seeker Menu"))
-
-        while True:
-            #Receiving Message From Client
-            data = connection.recv(2048)
-            optionSelection = int(data.decode())
-
-            if optionSelection == 1:
-                self.acceptJob(connection)
-
-            elif optionSelection == 2:
-                self.FoundJobSeeker(connection)
-            else:
-                connection.send(pickle.dumps("Job Viewing Menu:\n1.Join Job\n2.Return to Job Seeker Menu"))
-
-    #FoundJobSeeker-->viewingMenuJS-->acceptJob
-    def acceptJob(self, connection):
-
-        #Sending Message to Client to Send What Number Of Job They Want to Join
-        connection.send(pickle.dumps("Please Enter What Number Job You Would Like To Join"))
-
-        while True:
-            # Receiving Message From Client
-            data = connection.recv(2048)
-            jobSelection = int(data.decode()) - 1
-
-            if int(jobSelection) <= len(self.jobList.listofjobs):
-
-                #Adding Job Seeker to the Job Seeker List
-                self.joinSeekerList(connection, jobSelection)
-
-                #Decreases The Shown Amount of Seekers Needed for Accepted Job
-                self.jobList.updateNumOfSeekers(jobSelection, False)
-
-                #Keeps the Client Waiting Until JobCreator Starts Job
-                self.waitForStart(connection)
-
-            else:
-                connection.send(pickle.dumps("Not Valid Input...\nEnter What Number Job You Would Like To Join"))
-
-    # FoundJobSeeker-->viewingMenuJS-->acceptJob-->waitForStart
-    def waitForStart(self, connection):
-
-        connection.send(pickle.dumps("Press Enter to go to waiting Screen"))
-
-        while True:
-            for jobs in self.jobList.listofjobs:
-                if jobs.getNumOfSeekers() == "Job Started":
-                    connection.send(pickle.dumps("Press Enter to run "+jobs.getJobName()+ " Program"))
-
-                    #Sending Key Word
-                    connection.send(pickle.dumps(jobs.getJobName()))
-
-                    self.jobCompletion = "Complete"
-                else:
-                    continue
-
-    #Used to Send The Targets IP and Port to Job Seeker
-    def sendTargetCredentials(self, connection, targetIP, targetPort):
-
-        connection.send(pickle.dumps("Target Credentials"))
-
-        connection.send(pickle.dumps(targetIP))
-
-        connection.send(pickle.dumps(targetPort))
-
-    '''             
-    JOB CREATOR FUNCTIONS 
-    '''
-    # Client Identifies as a Job Creator
-    def FoundJobCreator(self, connection):
-
-        """
-        :Description: This Function will Run when the Client identifies themselves as a Job Creator.
-                        It will then send the Client a list of options to choose from, when one of these
-                        choices are picked it will run another function to fulfil the job requested from
-                        the Job Creator Client
-        :param connection: This is the Socket which is used to send and receive message from the Client
-        :return: VOID
-        """
-
-        # Sending Job Creator Options to Client
-        connection.send(pickle.dumps("Job Creator Menu:\n1.View Jobs\n2.Create Job\n3.Exit\n"))
-
-        while True:
-
-
-            # Receiving Message From Client
-            data = connection.recv(2048)
-            optionSelection = data.decode()
-
-            # View Jobs Condition
-            if optionSelection == '1':
-                self.viewingMenuJC(connection)
-
-            # Create Job Condition
-            if optionSelection == '2':
-                self.jobCreationItems(connection)
-
-            # Exit Condition
-            if optionSelection == '3':
-               self.threadedClient(connection)
-
-            # Base Case Condition
-            if optionSelection != '1' and optionSelection != '2' and optionSelection != '3':
-                connection.send(pickle.dumps("Not a Valid Input...Try Again"))
-
-    #FoundJobCreator-->viewingMenuJC
-    def viewingMenuJC(self, connection):
-
-        self.jobListView(connection)
-
-        connection.send(pickle.dumps("Job Viewing Menu:\n1.Start Job\n2.View Seekers\n3.Exit"))
-
-        while True:
-            #Receiving Message From Client
-            data = connection.recv(2048)
-            optionSelection = int(data.decode())
-
-            if optionSelection == 1:
-                self.startJob(connection)
-            elif optionSelection == 2:
-                self.seekerListView(connection)
-            elif optionSelection == 3:
-                self.FoundJobCreator(connection)
-            else:
-                connection.send(pickle.dumps("Job Viewing Menu:\n1.Start Job\n2.View Seekers\n3.Exit"))
-
-    #FoundJobCreator-->jobCreationItems
-    def jobCreationItems(self, connection):
-
-        # Sending Job Creator Options to Client
-        connection.send(pickle.dumps(self.jobList.jobsToRequest))
-
-        data = connection.recv(2048)
-        jobNumber = data.decode()
-
-        self.JobSelector(connection, int(jobNumber))
-
-        #Sending Job Creator Options to Client
-        self.FoundJobCreator(connection)
-
-    #FoundJobCreator-->viewingMenuJC-->startJob
-    def startJob(self, connection):
-
-        connection.send(pickle.dumps("Please Enter What Number Job You Would Like To Start: "))
-
-        #Receiving Message From Client
-        data = connection.recv(2048)
-        jobSelection = int(data.decode()) - 1
-
-        self.jobList.updateNumOfSeekers(jobSelection, True)
-
-        if self.jobList.listofjobs[jobSelection].getNumOfSeekers() == "Job Started":
-            connection.send(pickle.dumps("Job Has Been Started\nPress Enter To Go Back To Job Creator Menu"))
-
-            self.FoundJobCreator(connection)
-
+        elif parameterList[3] == "JobSeeker":
+            self.jobCreatorList.append(JobSeeker(parameterList[1], parameterList[2]))
+            connection.send(pickle.dumps(self.jobSeekerCommandMessage))
         else:
-            connection.send(pickle.dumps("Job Must Have 0 Seekers to Start\nPress Enter To Go Back To Job Creator Menu"))
-            self.FoundJobCreator(connection)
+            connection.send(pickle.dumps("Not a valid position"))
 
-    #Used to Get The Targets IP and Port From Job Creator (Inside def JobSelector(self, connection, jobNumber))
-    def getTargetCredentials(self, connection):
+    #COMPLETE
+    def createJob(self, connection, parameterList):
+        connection.send(pickle.dumps("Job has been created and added to the Job List"))
+        self.jobListOBJ.updateJobList(parameterList[1], parameterList[2], parameterList[3], parameterList[4],
+                                      parameterList[5])
 
-        connection.send(pickle.dumps("Enter The Target's IP Address"))
+        self.fileRecordOBJ.updateJobListBackup(self.jobListOBJ.listofjobs)
 
-        # Receiving Message From Client
-        data = connection.recv(2048)
-        self.targetIP = str(data.decode())
+    #COMPLETE
+    def removeJob(self, connection, parameterList):
+        for Job in self.jobListOBJ.listofjobs:
+            if Job.jobParameters[0] == parameterList[1] and Job.jobParameters[1] == parameterList[2]:
+                connection.send(pickle.dumps(Job.FullJob + " has been removed from the Job List"))
+                self.jobListOBJ.listofjobs.remove(Job)
+            else:
+                connection.send(pickle.dumps("Entered Job Does Not Exist In Job List"))
 
-        connection.send(pickle.dumps("Enter The Target's Port if Port Not Needed Enter 0"))
-
-        # Receiving Message From Client
-        data = connection.recv(2048)
-        self.targetPort = int(data.decode())
-
-    '''             
-    HELPER FUNCTIONS 
-    '''
-    def JobSelector(self, connection, jobNumber):
-
-        connection.send(pickle.dumps("Enter The Job Creator's Name: "))
-
-        data = connection.recv(2048)
-        creatorName = data.decode()
-
-        if jobNumber == 1:
-            self.jobList.createIPOnlineDetectionJob(creatorName)
-
-            self.getTargetCredentials(connection)
-        elif jobNumber == 2:
-            self.jobList.createSubnetIPOnlineDetection(creatorName)
-
-            self.getTargetCredentials(connection)
-        elif jobNumber == 3:
-            self.jobList.specificPortStatusDetection(creatorName)
-
-            self.getTargetCredentials(connection)
-        elif jobNumber == 4:
-            self.jobList.allPortStatusDetection(creatorName)
-
-            self.getTargetCredentials(connection)
-        elif jobNumber == 5:
-            connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
-
-            data = connection.recv(2048)
-            numOfSeekers = data.decode()
-
-            self.jobList.createICMPFloodAttackJob(creatorName, numOfSeekers)
-
-            self.getTargetCredentials(connection)
-        elif jobNumber == 6:
-            connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
-
-            data = connection.recv(2048)
-            numOfSeekers = data.decode()
-
-            self.jobList.createTCPFloodAttackJob(creatorName, numOfSeekers)
-
-            self.getTargetCredentials(connection)
-        elif jobNumber == 7:
-            connection.send(pickle.dumps("Enter How Many Job Seekers Are Needed: "))
-
-            data = connection.recv(2048)
-            numOfSeekers = data.decode()
-
-            self.jobList.createUDPFloodAttackJob(creatorName, numOfSeekers)
-
-            self.getTargetCredentials(connection)
-
-    #Helper Method for View Lists
-    def jobListView(self, connection):
-
-        #Condition for No Jobs In Job List
-        if len(self.jobList.listofjobs) == 0:
+    #COMPLETE
+    def viewJobs(self, connection):
+        if len(self.jobListOBJ.listofjobs) == 0:
             connection.send(pickle.dumps("No Jobs Posted"))
         else:
-            connection.send(pickle.dumps(self.jobList.listofjobs))
+            try:
+                connection.send(pickle.dumps(self.jobListOBJ.listofjobs))
+            except EOFError:
+                pass
 
-    #Helper Method to View Seeker List
-    def seekerListView(self, connection):
+    #COMPLETE
+    def joinJob(self, connection, parameterList):
+        count = 0
+        for Job in self.jobListOBJ.listofjobs:
+            count += 1
 
-        connection.send(pickle.dumps("Please Enter What Job Number You Would Like To View the Active Seekers: "))
+            if Job.jobParameters[0] == parameterList[1] and Job.jobParameters[1] == parameterList[
+                2] and Job.NumOfSeekers == "Job Started":
+                connection.send(pickle.dumps("Job is full"))
+                break
+
+            if count > len(self.jobListOBJ.listofjobs):
+                connection.send(pickle.dumps("Entered Job Does Not Exist In Job List"))
+                break
+
+            if Job.jobParameters[0] == parameterList[1] and Job.jobParameters[1] == parameterList[2] and int(
+                    Job.NumOfSeekers) != 0:
+                connection.send(pickle.dumps(parameterList[3] + " has joined: " + Job.FullJob))
+                Job.JobSeekerList.append(parameterList[3])
+                Job.NumOfSeekers = int(Job.NumOfSeekers) - 1
+                Job.NumOfSeekers = str(Job.NumOfSeekers)
+                break
+
+    #COMPLETE
+    def startJob(self, connection, parameterList):
+        count = 0
+        for Job in self.jobListOBJ.listofjobs:
+            count += 1
+            if count > len(self.jobListOBJ.listofjobs):
+                connection.send(pickle.dumps("Entered Job Does Not Exist In Job List"))
+                break
+
+            if Job.jobParameters[0] == parameterList[1] and Job.jobParameters[1] == parameterList[2]:
+                connection.send(pickle.dumps(Job.FullJob + " has been started"))
+                Job.setNumOfSeekers("Job Started")
+                break
+
+    #COMPLETE
+    def completeJob(self, connection, parameterList):
+
+        print("Sending Job Type To Client")
+        connection.send(pickle.dumps(parameterList[2]))
+        print("Sending Target IP To Client (If Needed)")
+        connection.send(pickle.dumps(parameterList[3]))
+        print("Sending Target Port To Client (If Needed)")
+        connection.send(pickle.dumps(parameterList[4]))
+
+        print("Waiting For Response From Client")
+
+        #Limiting to 2048 Bytes
+        clientOutput = connection.recv(2048)
+
+        print("Received Response From Client")
 
         #Receiving Message From Client
-        data = connection.recv(2048)
-        jobSelection = int(data.decode()) - 1
+        clientCompletion = pickle.loads(clientOutput)
 
-        if len(self.activeJobsWithSeekers) == 0:
-            connection.send(pickle.dumps("No Active Job Seekers\nPress Enter to Return to Job Viewing Screen"))
+        print("Response From Client Saved")
 
-            #Client Must Send Empty Space To Obtain This Message
-            self.FoundJobCreator(connection)
+        #Recording Multi Lined Client Output
+        if type(clientCompletion) == list:
+
+            for hosts in clientCompletion:
+                self.fileRecordOBJ.recordOutput(hosts)
+
+        #Recording Single Lined Client Output
         else:
-            connection.send(pickle.dumps(self.activeJobsWithSeekers[jobSelection].getJobSeekerList()))
+            self.fileRecordOBJ.recordOutput(clientCompletion)
 
-            #Client Must Send Empty Space To Obtain This Message
-            self.FoundJobCreator(connection)
+    #COMPLETE
+    def commandRouting(self, connection, parameterList):
+        if parameterList[0] == "LOGIN":
+            self.login(connection, parameterList)
+        elif parameterList[0] == "CREATEJOB":
+            self.createJob(connection, parameterList)
+        elif parameterList[0] == "REMOVEJOB":
+            self.removeJob(connection, parameterList)
+        elif parameterList[0] == "VIEWJOBS":
+            self.viewJobs(connection)
+        elif parameterList[0] == "JOINJOB":
+            self.joinJob(connection, parameterList)
+        elif parameterList[0] == "STARTJOB":
+            self.startJob(connection, parameterList)
+        elif parameterList[0] == "COMPLETEJOB":
+            self.completeJob(connection, parameterList)
+        else:
+            connection.send(pickle.dumps("Invalid Command"))
 
-    #SeekerList Gets Appended
-    def joinSeekerList(self, connection, jobNumber):
-        #Sending Message to Client to Send Job Seeker Name
-        connection.send(pickle.dumps("Please Enter Your Name (Will Be Added To Job Seeker List): "))
+    #COMPLETE
+    def readBackup(self):
+        try:
+            backup = open("JobBackup.txt", 'r')
+            backupList = backup.readlines()
 
-        #Receiving Message From Client
-        data = connection.recv(2048)
-        SeekerName = data.decode()
-
-        #Updating Client Specific Job Seeker List
-        self.jobList.listofjobs[jobNumber].getJobSeekerList().append(SeekerName)
-
-        #Updating Server Specific Job Seeker List with Client Specific Job Seeker List
-        self.activeJobsWithSeekers.append(self.jobList.listofjobs[jobNumber])
-
-    def matchJobs(self, jobNumber):
-        count = -1
-        for job in self.jobList.listofjobs:
-            count+=1
-            if job.getFullJob() == self.activeJobsWithSeekers[count].getFullJob():
-                print()
+            for lines in backupList:
+                self.ParseCommand(lines.rstrip('\n'))
+                self.jobListOBJ.updateJobList(self.parameterList[0], self.parameterList[1], self.parameterList[2],
+                                              self.parameterList[3], self.parameterList[4])
+            print("Jobs Have Been Restored")
+        except IOError:
+            pass
 
 
 if __name__ == "__main__":
